@@ -7,13 +7,17 @@ const app = express();
 
 // Middleware
 const allowedOrigin = (process.env.CLIENT_URL || '').replace(/\/$/, '');
-const corsOptions = {
-  origin: allowedOrigin || '*',
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (origin === allowedOrigin) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-};
-app.use(cors(corsOptions));
+}));
 app.use(express.json());
 
 // Database connection
