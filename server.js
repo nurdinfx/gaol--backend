@@ -9,7 +9,8 @@ const app = express();
 const defaultAllowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://goalfrontend-chi.vercel.app'
+  'https://goalfrontend-chi.vercel.app',
+  'https://goalfrontend-km2o.vercel.app'
 ];
 const envAllowedOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || '')
   .split(',')
