@@ -6,13 +6,23 @@ require('dotenv').config();
 const app = express();
 
 // Middleware
-const allowedOrigin = (process.env.CLIENT_URL || '').replace(/\/$/, '');
+const defaultAllowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://goalfrontend-chi.vercel.app'
+];
+const envAllowedOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+const allowedOrigins = Array.from(new Set([...defaultAllowedOrigins, ...envAllowedOrigins]))
+  .map(origin => origin.replace(/\/$/, ''));
 
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    if (origin === allowedOrigin) return callback(null, true);
-    return callback(new Error('Not allowed by CORS'));
+    if (allowedOrigins.includes(origin.replace(/\/$/, ''))) return callback(null, true);
+    return callback(new Error(`Not allowed by CORS: ${origin}`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
