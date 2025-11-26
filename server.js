@@ -6,7 +6,14 @@ require('dotenv').config();
 const app = express();
 
 // Middleware
-app.use(cors());
+const allowedOrigin = (process.env.CLIENT_URL || '').replace(/\/$/, '');
+const corsOptions = {
+  origin: allowedOrigin || '*',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Database connection
@@ -22,7 +29,6 @@ const villageRoutes = require('./routes/villages');
 const customerRoutes = require('./routes/customers');
 const workerRoutes = require('./routes/workers');
 const dashboardRoutes = require('./routes/dashboard');
-const reportRoutes = require('./routes/reports');
 const paymentRoutes = require('./routes/payments');
 const employeeRoutes = require('./routes/employees');
 const withdrawRoutes = require('./routes/withdraws');
@@ -777,7 +783,6 @@ app.use('/api/workers', workerRoutes);
 app.use('/api/zones', zonesRoutes); // Add zones routes
 app.use('/api/company-expenses', companyExpensesRouter); // Company expenses routes
 app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/reports', reportRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/employees', employeeRoutes);
 
