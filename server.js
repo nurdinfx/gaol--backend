@@ -19,10 +19,23 @@ const envAllowedOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || 
 const allowedOrigins = Array.from(new Set([...defaultAllowedOrigins, ...envAllowedOrigins]))
   .map(origin => origin.replace(/\/$/, ''));
 
+// Helper to allow all Vercel preview URLs for this project (goalfrontend-*)
+const isAllowedVercelOrigin = (origin = '') => {
+  try {
+    const url = new URL(origin);
+    return url.protocol === 'https:' && url.hostname.endsWith('.vercel.app') && url.hostname.startsWith('goalfrontend');
+  } catch {
+    return false;
+  }
+};
+
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin.replace(/\/$/, ''))) return callback(null, true);
+    const normalized = origin.replace(/\/$/, '');
+    if (allowedOrigins.includes(normalized) || isAllowedVercelOrigin(normalized)) {
+      return callback(null, true);
+    }
     return callback(new Error(`Not allowed by CORS: ${origin}`));
   },
   credentials: true,
