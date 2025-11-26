@@ -10,7 +10,8 @@ const defaultAllowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
   'https://goalfrontend-chi.vercel.app',
-  'https://goalfrontend-km2o.vercel.app'
+  'https://goalfrontend-km2o.vercel.app',
+  'https://goalfrontend.vercel.app'
 ];
 const envAllowedOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || '')
   .split(',')
@@ -19,11 +20,15 @@ const envAllowedOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || 
 const allowedOrigins = Array.from(new Set([...defaultAllowedOrigins, ...envAllowedOrigins]))
   .map(origin => origin.replace(/\/$/, ''));
 
-// Helper to allow all Vercel preview URLs for this project (goalfrontend-*)
+// Enhanced Vercel detection
 const isAllowedVercelOrigin = (origin = '') => {
   try {
     const url = new URL(origin);
-    return url.protocol === 'https:' && url.hostname.endsWith('.vercel.app') && url.hostname.startsWith('goalfrontend');
+    // Allow all Vercel preview URLs for this project
+    return (url.protocol === 'https:' && 
+           url.hostname.endsWith('.vercel.app') && 
+           url.hostname.includes('goalfrontend')) ||
+           url.hostname === 'goalfrontend.vercel.app';
   } catch {
     return false;
   }
@@ -31,16 +36,21 @@ const isAllowedVercelOrigin = (origin = '') => {
 
 app.use(cors({
   origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
+    
     const normalized = origin.replace(/\/$/, '');
+    
     if (allowedOrigins.includes(normalized) || isAllowedVercelOrigin(normalized)) {
       return callback(null, true);
     }
+    
+    console.log('🔒 CORS blocked origin:', origin);
     return callback(new Error(`Not allowed by CORS: ${origin}`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 app.use(express.json());
 
@@ -388,8 +398,8 @@ zonesRoutes.delete('/:id', async (req, res) => {
       const zoneIndex = zones.findIndex(z => z._id === zoneId);
       if (zoneIndex === -1) {
         return res.status(404).json({
-          success: false,
-          message: 'Zone not found'
+            success: false,
+            message: 'Zone not found'
         });
       }
       
