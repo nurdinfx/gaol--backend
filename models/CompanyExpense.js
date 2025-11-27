@@ -1,11 +1,6 @@
 const mongoose = require('mongoose');
 
 const companyExpenseSchema = new mongoose.Schema({
-  type: {
-    type: String,
-    required: [true, 'Expense type is required'],
-    trim: true
-  },
   amount: {
     type: Number,
     required: [true, 'Amount is required'],

@@ -27,7 +27,6 @@ router.post('/', async (req, res) => {
   try {
     const expenseData = {
       _id: `expense_${expenseIdCounter++}`,
-      type: req.body.type,
       description: req.body.description,
       amount: parseFloat(req.body.amount),
       category: req.body.category,
@@ -40,10 +39,10 @@ router.post('/', async (req, res) => {
     };
 
     // Validate required fields
-    if (!expenseData.type || !expenseData.description || !expenseData.amount) {
+    if (!expenseData.description || !expenseData.amount) {
       return res.status(400).json({
         success: false,
-        message: 'Type, description, and amount are required fields'
+        message: 'Description and amount are required fields'
       });
     }
 
@@ -88,7 +87,6 @@ router.put('/:id', async (req, res) => {
     // Only update fields that are provided in the request, preserve others
     const updatedExpense = {
       ...existingExpense,
-      type: req.body.type !== undefined ? req.body.type : existingExpense.type,
       description: req.body.description !== undefined ? req.body.description : existingExpense.description,
       amount: req.body.amount !== undefined ? parseFloat(req.body.amount) : existingExpense.amount,
       category: req.body.category !== undefined ? req.body.category : existingExpense.category,
@@ -147,17 +145,12 @@ router.delete('/:id', async (req, res) => {
 router.get('/summary', async (req, res) => {
   try {
     const totalExpenses = companyExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-    const expensesByType = companyExpenses.reduce((acc, expense) => {
-      acc[expense.type] = (acc[expense.type] || 0) + expense.amount;
-      return acc;
-    }, {});
 
     res.json({
       success: true,
       data: {
         totalExpenses,
-        totalRecords: companyExpenses.length,
-        expensesByType
+        totalRecords: companyExpenses.length
       }
     });
   } catch (error) {
