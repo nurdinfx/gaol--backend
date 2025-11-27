@@ -16,11 +16,6 @@ const companyExpenseSchema = new mongoose.Schema({
     trim: true,
     default: 'general'
   },
-  employeeName: {
-    type: String,
-    trim: true,
-    default: ''
-  },
   notes: {
     type: String,
     trim: true,
