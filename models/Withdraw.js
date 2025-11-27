@@ -20,11 +20,6 @@ const withdrawSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  status: {
-    type: String,
-    enum: ['pending', 'approved', 'rejected', 'completed'],
-    default: 'pending'
-  },
   referenceNumber: {
     type: String,
     unique: true
@@ -46,12 +41,7 @@ const withdrawSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
-  },
-  approvedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  approvedDate: Date
+  }
 }, {
   timestamps: true
 });

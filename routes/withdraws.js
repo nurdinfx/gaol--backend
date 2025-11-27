@@ -13,12 +13,8 @@ router.use(authMiddleware);
 // Get all withdrawals - FIXED RESPONSE FORMAT
 router.get('/', async (req, res) => {
   try {
-    const { status, search } = req.query;
+    const { search } = req.query;
     let filter = {};
-    
-    if (status && status !== 'all') {
-      filter.status = status;
-    }
     
     if (search) {
       filter.$or = [
@@ -30,11 +26,10 @@ router.get('/', async (req, res) => {
 
     const withdrawals = await Withdraw.find(filter)
       .populate('createdBy', 'name username')
-      .populate('approvedBy', 'name username')
       .sort({ createdAt: -1 });
 
     // FIX: Return data directly as array (matching frontend expectation)
-    res.json(withdrawals); // Changed from {success: true, data: withdrawals}
+    res.json(withdrawals);
     
   } catch (error) {
     console.error('Error fetching withdrawals:', error);
@@ -51,23 +46,14 @@ router.get('/stats', async (req, res) => {
   try {
     const withdrawals = await Withdraw.find();
     
-    const totalWithdrawn = withdrawals
-      .filter(w => w.status === 'completed')
-      .reduce((sum, w) => sum + w.amount, 0);
-    
-    const pendingCount = withdrawals.filter(w => w.status === 'pending').length;
-    const approvedCount = withdrawals.filter(w => w.status === 'approved').length;
-    const completedCount = withdrawals.filter(w => w.status === 'completed').length;
-    const rejectedCount = withdrawals.filter(w => w.status === 'rejected').length;
+    const totalWithdrawn = withdrawals.reduce((sum, w) => sum + w.amount, 0);
+    const totalCount = withdrawals.length;
 
     res.json({
       success: true,
       data: {
         totalWithdrawn,
-        pendingCount,
-        approvedCount,
-        completedCount,
-        rejectedCount
+        totalCount
       },
       message: 'Withdrawal stats fetched successfully'
     });
@@ -90,8 +76,7 @@ router.post('/', async (req, res) => {
       category,
       withdrawDate,
       bankDetails,
-      notes,
-      status = 'pending'
+      notes
     } = req.body;
 
     console.log('Creating withdrawal with data:', req.body);
@@ -115,11 +100,10 @@ router.post('/', async (req, res) => {
       bankDetails: {
         bankName: bankDetails.bankName,
         accountNumber: bankDetails.accountNumber,
-        accountHolder: accountHolder, // Auto-generate if missing
+        accountHolder: accountHolder,
         branch: bankDetails.branch || 'Main Branch'
       },
       notes: notes || '',
-      status,
       createdBy: req.user._id
     };
 
@@ -129,10 +113,9 @@ router.post('/', async (req, res) => {
     // Populate the createdBy field
     await withdrawal.populate('createdBy', 'name username');
 
-    // FIX: Return proper response format that frontend expects
     res.status(201).json({
       success: true,
-      data: withdrawal, // Frontend expects result.data
+      data: withdrawal,
       message: 'Withdrawal created successfully'
     });
     
@@ -156,8 +139,7 @@ router.put('/:id', async (req, res) => {
       category,
       withdrawDate,
       bankDetails,
-      notes,
-      status
+      notes
     } = req.body;
 
     const updateData = {};
@@ -166,7 +148,6 @@ router.put('/:id', async (req, res) => {
     if (category !== undefined) updateData.category = category;
     if (withdrawDate !== undefined) updateData.withdrawDate = new Date(withdrawDate);
     if (notes !== undefined) updateData.notes = notes;
-    if (status !== undefined) updateData.status = status;
 
     if (bankDetails) {
       updateData.bankDetails = {};
@@ -185,8 +166,7 @@ router.put('/:id', async (req, res) => {
       id,
       updateData,
       { new: true, runValidators: true }
-    ).populate('createdBy', 'name username')
-     .populate('approvedBy', 'name username');
+    ).populate('createdBy', 'name username');
 
     if (!withdrawal) {
       return res.status(404).json({
@@ -195,10 +175,9 @@ router.put('/:id', async (req, res) => {
       });
     }
 
-    // FIX: Return proper response format
     res.json({
       success: true,
-      data: withdrawal, // Frontend expects result.data
+      data: withdrawal,
       message: 'Withdrawal updated successfully'
     });
   } catch (error) {
@@ -211,74 +190,27 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Update withdrawal status - FIXED RESPONSE FORMAT
-router.patch('/:id/status', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    if (!status || !['pending', 'approved', 'rejected', 'completed'].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Valid status is required: pending, approved, rejected, or completed'
-      });
-    }
-
-    const updateData = { status };
-    
-    if (status === 'approved' || status === 'completed') {
-      updateData.approvedBy = req.user._id;
-      updateData.approvedDate = new Date();
-    }
-
-    const withdrawal = await Withdraw.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true, runValidators: true }
-    ).populate('createdBy', 'name username')
-     .populate('approvedBy', 'name username');
-
-    if (!withdrawal) {
-      return res.status(404).json({
-        success: false,
-        message: 'Withdrawal not found'
-      });
-    }
-
-    // FIX: Return proper response format
-    res.json({
-      success: true,
-      data: withdrawal, // Frontend expects result.data
-      message: `Withdrawal status updated to ${status}`
-    });
-  } catch (error) {
-    console.error('Error updating withdrawal status:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error updating withdrawal status',
-      error: error.message
-    });
-  }
-});
-
 // Delete withdrawal - FIXED RESPONSE FORMAT
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
+    console.log('Attempting to delete withdrawal with ID:', id);
+
     const withdrawal = await Withdraw.findByIdAndDelete(id);
 
     if (!withdrawal) {
+      console.log('Withdrawal not found with ID:', id);
       return res.status(404).json({
         success: false,
         message: 'Withdrawal not found'
       });
     }
 
-    // FIX: Return proper response format
+    console.log('Successfully deleted withdrawal:', withdrawal._id);
     res.json({
       success: true,
-      data: withdrawal, // Frontend expects result.data
+      data: withdrawal,
       message: 'Withdrawal deleted successfully'
     });
   } catch (error) {
@@ -297,8 +229,7 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
 
     const withdrawal = await Withdraw.findById(id)
-      .populate('createdBy', 'name username')
-      .populate('approvedBy', 'name username');
+      .populate('createdBy', 'name username');
 
     if (!withdrawal) {
       return res.status(404).json({
@@ -307,10 +238,9 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    // FIX: Return proper response format
     res.json({
       success: true,
-      data: withdrawal, // Frontend expects result.data
+      data: withdrawal,
       message: 'Withdrawal fetched successfully'
     });
   } catch (error) {
