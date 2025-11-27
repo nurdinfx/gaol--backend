@@ -71,6 +71,7 @@ const paymentRoutes = require('./routes/payments');
 const employeeRoutes = require('./routes/employees');
 const withdrawRoutes = require('./routes/withdraws');
 const userRoutes = require('./routes/users');
+const villageCollectionsRoutes = require('./routes/villageCollections');
 const CompanyExpense = require('./models/CompanyExpense');
 
 // ==================== ZONES ROUTES ====================
@@ -823,6 +824,7 @@ app.use('/api/company-expenses', companyExpensesRouter); // Company expenses rou
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/employees', employeeRoutes);
+app.use('/api/village-collections', villageCollectionsRoutes);
 
 // ==================== FIX: ADD BOTH WITHDRAW ROUTES ====================
 // Mount withdraw routes at both endpoints for compatibility
