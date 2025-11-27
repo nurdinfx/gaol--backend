@@ -40,24 +40,6 @@ const carSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  brand: {
-    type: String,
-    required: true
-  },
-  model: {
-    type: String,
-    required: true
-  },
-  year: {
-    type: Number,
-    required: true
-  },
-  color: String,
-  driverName: {
-    type: String,
-    required: true
-  },
-  driverPhone: String,
   status: {
     type: String,
     enum: ['active', 'maintenance', 'inactive'],

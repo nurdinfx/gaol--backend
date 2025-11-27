@@ -47,9 +47,10 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const carData = {
-      ...req.body,
       plateNumber: req.body.plateNumber?.toUpperCase().trim(),
-      isActive: true // Ensure new cars are active
+      carType: req.body.carType?.trim(),
+      status: req.body.status || 'active',
+      isActive: true
     };
 
     // Check if plate number already exists (only active cars)
@@ -94,13 +95,14 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const carData = { 
-      ...req.body,
+      plateNumber: req.body.plateNumber?.toUpperCase().trim(),
+      carType: req.body.carType?.trim(),
+      status: req.body.status,
       updatedAt: new Date()
     };
     
     // If plate number is being updated, check for duplicates
     if (carData.plateNumber) {
-      carData.plateNumber = carData.plateNumber.toUpperCase().trim();
       const existingCar = await Car.findOne({ 
         plateNumber: carData.plateNumber,
         _id: { $ne: req.params.id },
