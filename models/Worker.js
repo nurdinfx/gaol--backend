@@ -11,11 +11,14 @@ const workerSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  email: {
+
+  workerId: {
     type: String,
-    trim: true,
-    lowercase: true
+    required: true,
+    unique: true,
+    trim: true
   },
+
   address: {
     type: String,
     default: 'Not provided'
@@ -105,7 +108,7 @@ const workerSchema = new mongoose.Schema({
 });
 
 // Auto-set monthlySalary from salary if not provided
-workerSchema.pre('save', function(next) {
+workerSchema.pre('save', function (next) {
   if (!this.monthlySalary && this.salary) {
     this.monthlySalary = this.salary;
   }
