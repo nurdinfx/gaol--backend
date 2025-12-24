@@ -6,18 +6,17 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const customers = await Customer.find()
-      .populate('villageId', 'name code')
-      .populate('zoneId', 'name code collectionDay villageId');
-    res.json({ 
-      success: true, 
+      .populate('zoneId', 'name code');
+    res.json({
+      success: true,
       data: customers,
       message: 'Customers fetched successfully'
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: 'Error fetching customers',
-      error: error.message 
+      error: error.message
     });
   }
 });
@@ -26,8 +25,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const customer = await Customer.findById(req.params.id)
-      .populate('villageId', 'name code')
-      .populate('zoneId', 'name code collectionDay villageId');
+      .populate('zoneId', 'name code');
     if (!customer) {
       return res.status(404).json({
         success: false,
@@ -52,9 +50,8 @@ router.post('/', async (req, res) => {
   try {
     const customer = new Customer(req.body);
     await customer.save();
-    await customer.populate('villageId', 'name code');
-    await customer.populate('zoneId', 'name code collectionDay villageId');
-    
+    await customer.populate('zoneId', 'name code');
+
     res.status(201).json({
       success: true,
       data: customer,
@@ -77,16 +74,15 @@ router.put('/:id', async (req, res) => {
       req.body,
       { new: true, runValidators: true }
     )
-    .populate('villageId', 'name code')
-    .populate('zoneId', 'name code collectionDay villageId');
-    
+      .populate('zoneId', 'name code');
+
     if (!customer) {
       return res.status(404).json({
         success: false,
         message: 'Customer not found'
       });
     }
-    
+
     res.json({
       success: true,
       data: customer,
@@ -96,6 +92,35 @@ router.put('/:id', async (req, res) => {
     res.status(400).json({
       success: false,
       message: 'Error updating customer',
+      error: error.message
+    });
+  }
+});
+
+// Bulk delete customers
+router.post('/bulk-delete', async (req, res) => {
+  try {
+    const { customerIds } = req.body;
+    console.log('🗑️ Bulk delete request received for:', customerIds?.length, 'customers');
+
+    if (!customerIds || !Array.isArray(customerIds) || customerIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No customer IDs provided'
+      });
+    }
+
+    const result = await Customer.deleteMany({ _id: { $in: customerIds } });
+
+    res.json({
+      success: true,
+      message: `${result.deletedCount} customers deleted successfully`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting customers',
       error: error.message
     });
   }
@@ -111,7 +136,7 @@ router.delete('/:id', async (req, res) => {
         message: 'Customer not found'
       });
     }
-    
+
     res.json({
       success: true,
       message: 'Customer deleted successfully'
@@ -130,7 +155,7 @@ router.post('/:id/monthly-payment', async (req, res) => {
   try {
     const { month, date } = req.body;
     const customer = await Customer.findById(req.params.id).lean(false);
-    
+
     if (!customer) {
       return res.status(404).json({
         success: false,
@@ -219,10 +244,10 @@ router.post('/:id/monthly-payment', async (req, res) => {
     }
 
     customer.payments = payments;
-    
+
     // Ensure zoneId is properly set as ObjectId before saving
     customer.zoneId = zoneIdValue;
-    
+
     // Mark as modified
     customer.markModified('payments');
     if (customer.monthlyPayments && customer.monthlyPayments.length > 0) {
@@ -231,11 +256,10 @@ router.post('/:id/monthly-payment', async (req, res) => {
     if (customer.paymentHistory && customer.paymentHistory.length > 0) {
       customer.markModified('paymentHistory');
     }
-    
+
     // Save with validation - pre-save hook will ensure dates are set
     const updatedCustomer = await customer.save();
-    await updatedCustomer.populate('villageId', 'name code');
-    await updatedCustomer.populate('zoneId', 'name code collectionDay villageId');
+    await updatedCustomer.populate('zoneId', 'name code');
 
     res.json({
       success: true,
@@ -250,14 +274,14 @@ router.post('/:id/monthly-payment', async (req, res) => {
       errors: error.errors,
       stack: error.stack
     });
-    
+
     // Provide more detailed error message
     let errorMessage = error.message;
     if (error.name === 'ValidationError' && error.errors) {
       const validationErrors = Object.values(error.errors).map(err => err.message).join(', ');
       errorMessage = `Validation error: ${validationErrors}`;
     }
-    
+
     res.status(400).json({
       success: false,
       message: 'Error initializing monthly payment',
@@ -272,7 +296,7 @@ router.patch('/:id/payment', async (req, res) => {
   try {
     const { month, paid, paidDate, method } = req.body;
     const customer = await Customer.findById(req.params.id).lean(false);
-    
+
     if (!customer) {
       return res.status(404).json({
         success: false,
@@ -381,10 +405,10 @@ router.patch('/:id/payment', async (req, res) => {
     };
 
     customer.payments = payments;
-    
+
     // Ensure zoneId is properly set as ObjectId before saving
     customer.zoneId = zoneIdValue;
-    
+
     // Mark as modified to ensure Mongoose saves changes
     if (customer.paymentHistory && customer.paymentHistory.length > 0) {
       customer.markModified('paymentHistory');
@@ -393,10 +417,9 @@ router.patch('/:id/payment', async (req, res) => {
     if (customer.monthlyPayments && customer.monthlyPayments.length > 0) {
       customer.markModified('monthlyPayments');
     }
-    
+
     await customer.save();
-    await customer.populate('villageId', 'name code');
-    await customer.populate('zoneId', 'name code collectionDay villageId');
+    await customer.populate('zoneId', 'name code');
 
     res.json({
       success: true,
@@ -418,7 +441,7 @@ router.post('/:id/partial-payment', async (req, res) => {
   try {
     const { month, amount, paidDate, method } = req.body;
     const customer = await Customer.findById(req.params.id).lean(false);
-    
+
     if (!customer) {
       return res.status(404).json({
         success: false,
@@ -533,9 +556,9 @@ router.post('/:id/partial-payment', async (req, res) => {
       }
       customer.zoneId = zoneIdValue;
     }
-    
+
     customer.payments = payments;
-    
+
     // Mark as modified to ensure Mongoose saves changes
     if (customer.paymentHistory && customer.paymentHistory.length > 0) {
       customer.markModified('paymentHistory');
@@ -544,10 +567,9 @@ router.post('/:id/partial-payment', async (req, res) => {
     if (customer.monthlyPayments && customer.monthlyPayments.length > 0) {
       customer.markModified('monthlyPayments');
     }
-    
+
     await customer.save();
-    await customer.populate('villageId', 'name code');
-    await customer.populate('zoneId', 'name code collectionDay villageId');
+    await customer.populate('zoneId', 'name code');
 
     res.json({
       success: true,
@@ -568,7 +590,7 @@ router.post('/:id/partial-payment', async (req, res) => {
 router.patch('/payments/mark-all-paid', async (req, res) => {
   try {
     const { month } = req.body;
-    
+
     if (!month) {
       return res.status(400).json({
         success: false,
@@ -680,7 +702,7 @@ router.patch('/payments/mark-all-paid', async (req, res) => {
           monthlyPayments: customer.monthlyPayments,
           paymentHistory: updatedPaymentHistory
         };
-        
+
         // Preserve zoneId if it exists
         if (customerZoneId) {
           let zoneIdValue = customerZoneId;
@@ -725,7 +747,7 @@ router.get('/stats/summary', async (req, res) => {
   try {
     const totalCustomers = await Customer.countDocuments();
     const activeCustomers = await Customer.countDocuments({ status: 'active' });
-    
+
     res.json({
       success: true,
       data: {
@@ -735,10 +757,10 @@ router.get('/stats/summary', async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: 'Error fetching customer stats',
-      error: error.message 
+      error: error.message
     });
   }
 });

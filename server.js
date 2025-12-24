@@ -25,10 +25,10 @@ const isAllowedVercelOrigin = (origin = '') => {
   try {
     const url = new URL(origin);
     // Allow all Vercel preview URLs for this project
-    return (url.protocol === 'https:' && 
-           url.hostname.endsWith('.vercel.app') && 
-           url.hostname.includes('goalfrontend')) ||
-           url.hostname === 'goalfrontend.vercel.app';
+    return (url.protocol === 'https:' &&
+      url.hostname.endsWith('.vercel.app') &&
+      url.hostname.includes('goalfrontend')) ||
+      url.hostname === 'goalfrontend.vercel.app';
   } catch {
     return false;
   }
@@ -38,13 +38,13 @@ app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
+
     const normalized = origin.replace(/\/$/, '');
-    
+
     if (allowedOrigins.includes(normalized) || isAllowedVercelOrigin(normalized)) {
       return callback(null, true);
     }
-    
+
     console.log('🔒 CORS blocked origin:', origin);
     return callback(new Error(`Not allowed by CORS: ${origin}`));
   },
@@ -54,10 +54,21 @@ app.use(cors({
 }));
 app.use(express.json());
 
+const { initScheduler } = require('./utils/scheduler');
+
 // Database connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/garbage-management')
-  .then(() => console.log('✅ Connected to MongoDB'))
+  .then(() => {
+    console.log('✅ Connected to MongoDB');
+    initScheduler(); // Initialize scheduler
+  })
   .catch(err => console.error('❌ MongoDB connection error:', err));
+
+mongoose.connection.once('open', async () => {
+  try { await VillageCollection.collection.dropIndex('villageId_1_date_1'); } catch { }
+  try { await VillageCollection.collection.dropIndex('villageName_1_date_1'); } catch { }
+  console.log('🧹 VillageCollection duplicate-date indexes dropped (if existed)');
+});
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -73,6 +84,7 @@ const withdrawRoutes = require('./routes/withdraws');
 const userRoutes = require('./routes/users');
 const villageCollectionsRoutes = require('./routes/villageCollections');
 const CompanyExpense = require('./models/CompanyExpense');
+const VillageCollection = require('./models/VillageCollection');
 
 // ==================== ZONES ROUTES ====================
 const zonesRoutes = express.Router();
@@ -85,7 +97,7 @@ let zoneIdCounter = 1;
 zonesRoutes.get('/', async (req, res) => {
   try {
     console.log('📍 Fetching all zones');
-    
+
     // Try to get zones from database first
     let zonesData = [];
     try {
@@ -103,7 +115,7 @@ zonesRoutes.get('/', async (req, res) => {
       console.log('📋 Database error, using in-memory zones data');
       zonesData = zones;
     }
-    
+
     res.json({
       success: true,
       data: zonesData,
@@ -124,7 +136,7 @@ zonesRoutes.get('/:id', async (req, res) => {
   try {
     const zoneId = req.params.id;
     console.log('📍 Fetching zone:', zoneId);
-    
+
     let zone;
     try {
       let Zone;
@@ -139,7 +151,7 @@ zonesRoutes.get('/:id', async (req, res) => {
       console.log('📋 Database error, using in-memory data');
       zone = zones.find(z => z._id === zoneId);
     }
-    
+
     if (!zone) {
       return res.status(404).json({
         success: false,
@@ -166,7 +178,7 @@ zonesRoutes.get('/:id', async (req, res) => {
 zonesRoutes.post('/', async (req, res) => {
   try {
     console.log('📍 Creating new zone:', req.body);
-    
+
     const { name, description, supervisor, contactNumber, notes, zoneNumber } = req.body;
 
     // Validate required fields
@@ -178,13 +190,13 @@ zonesRoutes.post('/', async (req, res) => {
     }
 
     let newZone;
-    
+
     try {
       // Try to save to database
       let Zone;
       try {
         Zone = require('./models/Zone');
-        
+
         // Check if zone number already exists
         const existingZone = await Zone.findOne({ zoneNumber });
         if (existingZone) {
@@ -243,9 +255,9 @@ zonesRoutes.post('/', async (req, res) => {
       };
       zones.push(newZone);
     }
-    
+
     console.log('✅ Zone created:', newZone);
-    
+
     res.status(201).json({
       success: true,
       data: newZone,
@@ -266,11 +278,11 @@ zonesRoutes.put('/:id', async (req, res) => {
   try {
     const zoneId = req.params.id;
     console.log('🔄 Updating zone:', zoneId, req.body);
-    
+
     const { name, description, supervisor, contactNumber, notes, status } = req.body;
 
     let updatedZone;
-    
+
     try {
       let Zone;
       try {
@@ -288,7 +300,7 @@ zonesRoutes.put('/:id', async (req, res) => {
           },
           { new: true, runValidators: true }
         );
-        
+
         if (!updatedZone) {
           return res.status(404).json({
             success: false,
@@ -306,7 +318,7 @@ zonesRoutes.put('/:id', async (req, res) => {
             message: 'Zone not found'
           });
         }
-        
+
         updatedZone = {
           ...zones[zoneIndex],
           name,
@@ -329,7 +341,7 @@ zonesRoutes.put('/:id', async (req, res) => {
           message: 'Zone not found'
         });
       }
-      
+
       updatedZone = {
         ...zones[zoneIndex],
         name,
@@ -365,13 +377,13 @@ zonesRoutes.delete('/:id', async (req, res) => {
   try {
     const zoneId = req.params.id;
     console.log('🗑️ Deleting zone:', zoneId);
-    
+
     try {
       let Zone;
       try {
         Zone = require('./models/Zone');
         const deletedZone = await Zone.findByIdAndDelete(zoneId);
-        
+
         if (!deletedZone) {
           return res.status(404).json({
             success: false,
@@ -389,7 +401,7 @@ zonesRoutes.delete('/:id', async (req, res) => {
             message: 'Zone not found'
           });
         }
-        
+
         const deletedZone = zones.splice(zoneIndex, 1);
         console.log('✅ Zone deleted from memory:', deletedZone[0]);
       }
@@ -399,11 +411,11 @@ zonesRoutes.delete('/:id', async (req, res) => {
       const zoneIndex = zones.findIndex(z => z._id === zoneId);
       if (zoneIndex === -1) {
         return res.status(404).json({
-            success: false,
-            message: 'Zone not found'
+          success: false,
+          message: 'Zone not found'
         });
       }
-      
+
       const deletedZone = zones.splice(zoneIndex, 1);
       console.log('✅ Zone deleted from memory:', deletedZone[0]);
     }
@@ -426,7 +438,7 @@ zonesRoutes.delete('/:id', async (req, res) => {
 zonesRoutes.post('/seed', async (req, res) => {
   try {
     console.log('🌱 Seeding sample zones data');
-    
+
     // Sample zones data
     const sampleZones = [
       {
@@ -783,9 +795,9 @@ advancePaymentRoutes.get('/worker/:workerId', (req, res) => {
 
 advancePaymentRoutes.post('/', (req, res) => {
   console.log('💰 Advance payment received:', req.body);
-  
+
   const { workerId, amount, description, date, type } = req.body;
-  
+
   // Create a mock response
   const mockPayment = {
     _id: Date.now().toString(),
@@ -797,7 +809,7 @@ advancePaymentRoutes.post('/', (req, res) => {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
-  
+
   res.status(201).json({
     success: true,
     data: mockPayment,
@@ -836,7 +848,7 @@ app.use('/api/users', userRoutes); // User management routes
 
 // ==================== HEALTH CHECK & TEST ROUTES ====================
 app.get('/api/health', (req, res) => {
-  res.json({ 
+  res.json({
     success: true,
     message: 'Server is running!',
     timestamp: new Date().toISOString()
@@ -844,7 +856,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.get('/api/test', (req, res) => {
-  res.json({ 
+  res.json({
     success: true,
     message: 'All routes working!',
     endpoints: [
@@ -852,7 +864,7 @@ app.get('/api/test', (req, res) => {
       '/api/cars',
       '/api/drivers',
       '/api/villages',
-      '/api/customers', 
+      '/api/customers',
       '/api/workers',
       '/api/zones',
       '/api/zones/seed',

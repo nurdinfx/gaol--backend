@@ -85,10 +85,6 @@ const customerSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  villageId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Village'
-  },
   zoneId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Zone',
@@ -116,7 +112,7 @@ const customerSchema = new mongoose.Schema({
       },
       remaining: {
         type: Number,
-        default: function() {
+        default: function () {
           return this.parent().monthlyFee;
         }
       },
@@ -138,7 +134,7 @@ const customerSchema = new mongoose.Schema({
       },
       totalDue: {
         type: Number,
-        default: function() {
+        default: function () {
           return this.parent().monthlyFee;
         }
       }
@@ -150,7 +146,7 @@ const customerSchema = new mongoose.Schema({
 });
 
 // Add pre-save middleware to automatically set villageId from zone and ensure paymentHistory dates
-customerSchema.pre('save', async function(next) {
+customerSchema.pre('save', async function (next) {
   try {
     // Ensure zoneId is preserved - convert to ObjectId if it's an object
     if (this.zoneId) {
@@ -167,15 +163,6 @@ customerSchema.pre('save', async function(next) {
     }
     // zoneId is optional, so we don't fail if it's missing
 
-    // If zoneId is provided but villageId is not, populate villageId from zone
-    if (this.zoneId && !this.villageId && mongoose.Types.ObjectId.isValid(this.zoneId)) {
-      const Zone = mongoose.model('Zone');
-      const zone = await Zone.findById(this.zoneId);
-      if (zone) {
-        this.villageId = zone.villageId;
-      }
-    }
-    
     // Convert payments object to Map if it's a plain object
     if (this.payments && typeof this.payments === 'object' && !(this.payments instanceof Map)) {
       this.payments = new Map(Object.entries(this.payments));
@@ -189,7 +176,7 @@ customerSchema.pre('save', async function(next) {
         }
       });
     }
-    
+
     next();
   } catch (error) {
     next(error);
@@ -197,7 +184,7 @@ customerSchema.pre('save', async function(next) {
 });
 
 // Convert Map to Object when converting to JSON
-customerSchema.methods.toJSON = function() {
+customerSchema.methods.toJSON = function () {
   const customer = this.toObject();
   if (customer.payments instanceof Map) {
     customer.payments = Object.fromEntries(customer.payments);
@@ -206,18 +193,18 @@ customerSchema.methods.toJSON = function() {
 };
 
 // Helper method to get previous month's remaining balance
-customerSchema.methods.getPreviousMonthBalance = function(month) {
+customerSchema.methods.getPreviousMonthBalance = function (month) {
   const [year, monthNum] = month.split('-').map(Number);
   let prevYear = year;
   let prevMonth = monthNum - 1;
-  
+
   if (prevMonth < 1) {
     prevMonth = 12;
     prevYear = year - 1;
   }
-  
+
   const prevMonthStr = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
-  
+
   // Check monthlyPayments first
   const prevMonthlyPayment = this.monthlyPayments?.find(p => p.month === prevMonthStr);
   if (prevMonthlyPayment) {
@@ -227,7 +214,7 @@ customerSchema.methods.getPreviousMonthBalance = function(month) {
     }
     return prevMonthlyPayment.remaining || 0;
   }
-  
+
   // Fallback to old payments structure
   const prevPayment = this.payments?.get?.(prevMonthStr) || this.payments?.[prevMonthStr];
   if (prevPayment) {
@@ -237,12 +224,12 @@ customerSchema.methods.getPreviousMonthBalance = function(month) {
     }
     return prevPayment.remaining || 0;
   }
-  
+
   return 0;
 };
 
 // Helper method to calculate total due for a month (previous balance + monthly fee)
-customerSchema.methods.calculateTotalDue = function(month) {
+customerSchema.methods.calculateTotalDue = function (month) {
   const previousBalance = this.getPreviousMonthBalance(month);
   return previousBalance + this.monthlyFee;
 };
