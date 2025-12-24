@@ -101,6 +101,7 @@ router.put('/:id', async (req, res) => {
 router.post('/bulk-delete', async (req, res) => {
   try {
     const { customerIds } = req.body;
+    console.log('🗑️ Bulk delete request received for:', customerIds?.length, 'customers');
 
     if (!customerIds || !Array.isArray(customerIds) || customerIds.length === 0) {
       return res.status(400).json({
